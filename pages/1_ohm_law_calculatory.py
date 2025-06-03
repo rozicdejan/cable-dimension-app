@@ -4,37 +4,74 @@ import math
 # Streamlit app configuration
 st.set_page_config(page_title="Ohm's Law Calculator (EU)", page_icon="⚡️")
 
-# Initialize session state for input fields and voltage standard
-if 'resistance' not in st.session_state:
-    st.session_state.resistance = 80.0
-if 'current' not in st.session_state:
-    st.session_state.current = 0.0
-if 'voltage' not in st.session_state:
-    st.session_state.voltage = 230.0
-if 'power' not in st.session_state:
-    st.session_state.power = 0.0
-if 'voltage_standard' not in st.session_state:
-    st.session_state.voltage_standard = "L-N (230V)"
+# Initialize session state defaults only if not already set
+def initialize_session_state():
+    defaults = {
+        "resistance": 80.0,
+        "current": 0.0,
+        "voltage": 230.0,
+        "power": 0.0,
+        "voltage_standard": "L-N (230V)",
+        "reset_key": 0  # Used to force reset of widget states
+    }
+    for key, value in defaults.items():
+        if key not in st.session_state:
+            st.session_state[key] = value
+
+initialize_session_state()
 
 # Title and description
 st.title("Ohm's Law Calculator (EU)")
 st.write("Calculate DC Power (Watts), Voltage (Volts), Current (Amps), or Resistance (Ohms) by entering any two non-zero values. Select EU voltage standard (L-N: 230V or L-L: 400V).")
 
 # Voltage standard selection
-voltage_standard = st.selectbox("Select Voltage Standard", ["L-N (230V)", "L-L (400V)"], index=0 if st.session_state.voltage_standard == "L-N (230V)" else 1, key="voltage_standard")
-default_voltage = 230.0 if voltage_standard == "L-N (230V)" else 400.0
+voltage_standard = st.selectbox(
+    "Select Voltage Standard",
+    ["L-N (230V)", "L-L (400V)"],
+    index=0 if st.session_state.voltage_standard == "L-N (230V)" else 1,
+    key=f"voltage_standard_{st.session_state.reset_key}"
+)
 
-# Update voltage in session state if standard changes (only if voltage is the default for the previous standard)
+# Update voltage based on standard change (only if voltage matches previous standard's default)
+default_voltage = 230.0 if voltage_standard == "L-N (230V)" else 400.0
 if voltage_standard != st.session_state.voltage_standard:
     if abs(st.session_state.voltage - (230.0 if st.session_state.voltage_standard == "L-N (230V)" else 400.0)) < 0.01:
         st.session_state.voltage = default_voltage
     st.session_state.voltage_standard = voltage_standard
 
 # Input fields
-resistance = st.number_input("Resistance (R) in ohms (Ω)", min_value=0.0, value=st.session_state.resistance, step=0.1, format="%.2f", key="resistance")
-current = st.number_input("Current (I) in amps (A)", min_value=0.0, value=st.session_state.current, step=0.1, format="%.2f", key="current")
-voltage = st.number_input("Voltage (V) in volts (V)", min_value=0.0, value=st.session_state.voltage, step=0.1, format="%.2f", key="voltage")
-power = st.number_input("Power (P) in watts (W)", min_value=0.0, value=st.session_state.power, step=0.1, format="%.2f", key="power")
+resistance = st.number_input(
+    "Resistance (R) in ohms (Ω)",
+    min_value=0.0,
+    value=st.session_state.resistance,
+    step=0.1,
+    format="%.2f",
+    key=f"resistance_{st.session_state.reset_key}"
+)
+current = st.number_input(
+    "Current (I) in amps (A)",
+    min_value=0.0,
+    value=st.session_state.current,
+    step=0.1,
+    format="%.2f",
+    key=f"current_{st.session_state.reset_key}"
+)
+voltage = st.number_input(
+    "Voltage (V) in volts (V)",
+    min_value=0.0,
+    value=st.session_state.voltage,
+    step=0.1,
+    format="%.2f",
+    key=f"voltage_{st.session_state.reset_key}"
+)
+power = st.number_input(
+    "Power (P) in watts (W)",
+    min_value=0.0,
+    value=st.session_state.power,
+    step=0.1,
+    format="%.2f",
+    key=f"power_{st.session_state.reset_key}"
+)
 
 # Reset button
 if st.button("Reset"):
@@ -43,20 +80,31 @@ if st.button("Reset"):
     st.session_state.voltage = 230.0
     st.session_state.power = 0.0
     st.session_state.voltage_standard = "L-N (230V)"
-    st.experimental_rerun()
+    st.session_state.reset_key += 1  # Increment to force widget refresh
+    st.rerun()
 
 # Calculate button
 if st.button("Calculate"):
     # Count non-zero inputs (ignore 0.0)
-    inputs = {"Resistance (Ω)": resistance, "Current (A)": current, "Voltage (V)": voltage, "Power (W)": power}
+    inputs = {
+        "Resistance (Ω)": resistance,
+        "Current (A)": current,
+        "Voltage (V)": voltage,
+        "Power (W)": power
+    }
     non_zero_inputs = [(key, value) for key, value in inputs.items() if value > 0.0]
-    
+
     if len(non_zero_inputs) != 2:
         st.error("Please enter exactly two non-zero values to calculate the others.")
     else:
         try:
             # Initialize result dictionary
-            results = {"Resistance (Ω)": resistance, "Current (A)": current, "Voltage (V)": voltage, "Power (W)": power}
+            results = {
+                "Resistance (Ω)": resistance,
+                "Current (A)": current,
+                "Voltage (V)": voltage,
+                "Power (W)": power
+            }
             input_keys = [key for key, _ in non_zero_inputs]
 
             # Calculations based on provided inputs
