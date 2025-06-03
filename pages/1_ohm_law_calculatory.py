@@ -22,7 +22,7 @@ initialize_session_state()
 
 # Title and description
 st.title("Ohm's Law Calculator (EU)")
-st.write("Calculate DC Power (Watts), Voltage (Volts), Current (Amps), or Resistance (Ohms) by entering any two non-zero values. Select EU voltage standard (L-N: 230V or L-L: 400V).")
+st.write("Calculate Power (Watts), Voltage (Volts), Current (Amps), or Resistance (Ohms) by entering any two non-zero values. Select EU voltage standard (L-N: 230V for single-phase/DC, L-L: 400V for three-phase AC).")
 
 # Voltage standard selection
 voltage_standard = st.selectbox(
@@ -41,7 +41,7 @@ if voltage_standard != st.session_state.voltage_standard:
 
 # Input fields
 resistance = st.number_input(
-    "Resistance (R) in ohms (Ω)",
+    "Resistance (R) in ohms (Ω) per phase",
     min_value=0.0,
     value=st.session_state.resistance,
     step=0.1,
@@ -49,7 +49,7 @@ resistance = st.number_input(
     key=f"resistance_{st.session_state.reset_key}"
 )
 current = st.number_input(
-    "Current (I) in amps (A)",
+    "Current (I) in amps (A) per phase",
     min_value=0.0,
     value=st.session_state.current,
     step=0.1,
@@ -107,34 +107,66 @@ if st.button("Calculate"):
             }
             input_keys = [key for key, _ in non_zero_inputs]
 
-            # Calculations based on provided inputs
-            if "Resistance (Ω)" in input_keys and "Voltage (V)" in input_keys:
-                results["Current (A)"] = voltage / resistance  # I = V / R
-                results["Power (W)"] = (voltage ** 2) / resistance  # P = V² / R
+            # Determine if three-phase (L-L: 400V) or single-phase/DC (L-N: 230V or other)
+            is_three_phase = voltage_standard == "L-L (400V)" and abs(voltage - 400.0) < 0.01
 
-            elif "Resistance (Ω)" in input_keys and "Current (A)" in input_keys:
-                results["Voltage (V)"] = current * resistance  # V = I * R
-                results["Power (W)"] = (current ** 2) * resistance  # P = I² * R
+            if is_three_phase:
+                # Three-phase calculations (assuming unity power factor, cos(φ) = 1)
+                if "Resistance (Ω)" in input_keys and "Voltage (V)" in input_keys:
+                    v_ln = voltage / math.sqrt(3)  # Line-to-neutral voltage
+                    results["Current (A)"] = v_ln / resistance  # I = V_LN / R
+                    results["Power (W)"] = 3 * (v_ln ** 2) / resistance  # P = 3 * (V_LN² / R)
 
-            elif "Resistance (Ω)" in input_keys and "Power (W)" in input_keys:
-                results["Voltage (V)"] = math.sqrt(power * resistance)  # V = √(P * R)
-                results["Current (A)"] = math.sqrt(power / resistance)  # I = √(P / R)
+                elif "Resistance (Ω)" in input_keys and "Current (A)" in input_keys:
+                    v_ln = current * resistance  # V_LN = I * R
+                    results["Voltage (V)"] = v_ln * math.sqrt(3)  # V_LL = V_LN * √3
+                    results["Power (W)"] = 3 * (current ** 2) * resistance  # P = 3 * (I² * R)
 
-            elif "Voltage (V)" in input_keys and "Current (A)" in input_keys:
-                results["Resistance (Ω)"] = voltage / current  # R = V / I
-                results["Power (W)"] = voltage * current  # P = V * I
+                elif "Resistance (Ω)" in input_keys and "Power (W)" in input_keys:
+                    v_ln = math.sqrt(power * resistance / 3)  # V_LN = √(P * R / 3)
+                    results["Voltage (V)"] = v_ln * math.sqrt(3)  # V_LL = V_LN * √3
+                    results["Current (A)"] = v_ln / resistance  # I = V_LN / R
 
-            elif "Voltage (V)" in input_keys and "Power (W)" in input_keys:
-                results["Resistance (Ω)"] = (voltage ** 2) / power  # R = V² / P
-                results["Current (A)"] = power / voltage  # I = P / V
+                elif "Voltage (V)" in input_keys and "Current (A)" in input_keys:
+                    v_ln = voltage / math.sqrt(3)  # V_LN = V_LL / √3
+                    results["Resistance (Ω)"] = v_ln / current  # R = V_LN / I
+                    results["Power (W)"] = math.sqrt(3) * voltage * current  # P = √3 * V_LL * I
 
-            elif "Current (A)" in input_keys and "Power (W)" in input_keys:
-                results["Resistance (Ω)"] = power / (current ** 2)  # R = P / I²
-                results["Voltage (V)"] = power / current  # V = P / I
+                elif "Voltage (V)" in input_keys and "Power (W)" in input_keys:
+                    results["Current (A)"] = power / (math.sqrt(3) * voltage)  # I = P / (√3 * V_LL)
+                    v_ln = voltage / math.sqrt(3)  # V_LN = V_LL / √3
+                    results["Resistance (Ω)"] = (v_ln ** 2) * 3 / power  # R = (V_LN² * 3) / P
+
+                elif "Current (A)" in input_keys and "Power (W)" in input_keys:
+                    results["Voltage (V)"] = power / (math.sqrt(3) * current)  # V_LL = P / (√3 * I)
+                    v_ln = results["Voltage (V)"] / math.sqrt(3)  # V_LN = V_LL / √3
+                    results["Resistance (Ω)"] = v_ln / current  # R = V_LN / I
 
             else:
-                st.error("Invalid combination of inputs. Please provide exactly two non-zero values.")
-                st.stop()
+                # Single-phase/DC calculations
+                if "Resistance (Ω)" in input_keys and "Voltage (V)" in input_keys:
+                    results["Current (A)"] = voltage / resistance  # I = V / R
+                    results["Power (W)"] = (voltage ** 2) / resistance  # P = V² / R
+
+                elif "Resistance (Ω)" in input_keys and "Current (A)" in input_keys:
+                    results["Voltage (V)"] = current * resistance  # V = I * R
+                    results["Power (W)"] = (current ** 2) * resistance  # P = I² * R
+
+                elif "Resistance (Ω)" in input_keys and "Power (W)" in input_keys:
+                    results["Voltage (V)"] = math.sqrt(power * resistance)  # V = √(P * R)
+                    results["Current (A)"] = math.sqrt(power / resistance)  # I = √(P / R)
+
+                elif "Voltage (V)" in input_keys and "Current (A)" in input_keys:
+                    results["Resistance (Ω)"] = voltage / current  # R = V / I
+                    results["Power (W)"] = voltage * current  # P = V * I
+
+                elif "Voltage (V)" in input_keys and "Power (W)" in input_keys:
+                    results["Resistance (Ω)"] = (voltage ** 2) / power  # R = V² / P
+                    results["Current (A)"] = power / voltage  # I = P / V
+
+                elif "Current (A)" in input_keys and "Power (W)" in input_keys:
+                    results["Resistance (Ω)"] = power / (current ** 2)  # R = P / I²
+                    results["Voltage (V)"] = power / current  # V = P / I
 
             # Update session state to reflect calculated values in input fields
             st.session_state.resistance = results["Resistance (Ω)"]
@@ -143,7 +175,7 @@ if st.button("Calculate"):
             st.session_state.power = results["Power (W)"]
 
             # Display results
-            st.success("Calculated Values:")
+            st.success(f"Calculated Values ({'Three-Phase AC' if is_three_phase else 'Single-Phase/DC'}):")
             for key, value in results.items():
                 st.write(f"{key}: {value:.2f}")
 
@@ -155,6 +187,7 @@ if st.button("Calculate"):
 # Add formulas for reference
 st.subheader("Ohm's Law and Power Formulas")
 st.markdown("""
+### Single-Phase/DC Formulas:
 **Ohms calculations:**
 - R = V / I
 - R = V² / P
@@ -174,4 +207,22 @@ st.markdown("""
 - P = V × I
 - P = V² / R
 - P = I² × R
+
+### Three-Phase AC Formulas (L-L: 400V, assuming unity power factor):
+**Power calculation:**
+- P = √3 × V_LL × I
+- P = 3 × (V_LN² / R), where V_LN = V_LL / √3
+- P = 3 × I² × R
+
+**Current calculation:**
+- I = P / (√3 × V_LL)
+- I = V_LN / R, where V_LN = V_LL / √3
+
+**Voltage calculation (line-to-line):**
+- V_LL = P / (√3 × I)
+- V_LL = √(P × R / 3) × √3
+
+**Resistance calculation:**
+- R = (V_LN² × 3) / P
+- R = V_LN / I, where V_LN = V_LL / √3
 """)
