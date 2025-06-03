@@ -8,8 +8,9 @@ st.set_page_config(page_title="Electrical Engineering Calculator", layout="wide"
 # Cache data to optimize performance
 @st.cache_data
 def load_table_data():
-    table_data_1 = {
-        "Cross-sectional area (mm²)": [1, 1.5, 2.5, 4, 6, 10, 16],
+    # Extend table_data_1 with interpolated values for larger cross-sections
+    base_sizes = [1, 1.5, 2.5, 4, 6, 10, 16]
+    base_ratings = {
         "Method 100# (A) (above a plasterboard ceiling)": [13, 16, 21, 27, 34, 45, 57],
         "Method 101# (A) (above a plasterboard ceiling, exceeding 100mm)": [10.5, 13, 17, 22, 27, 36, 46],
         "Method 102# (A) (in a stud wall with thermal insulation)": [13, 15, 20, 26, 32, 42, 53],
@@ -19,6 +20,14 @@ def load_table_data():
         "Method C* (A) (clipped direct)": [16, 20, 27, 35, 47, 64, 85],
         "Voltage drop (mV/A/m)": [44, 29, 18, 11, 7.3, 4.4, 2.8]
     }
+    
+    # Interpolate for larger sizes (25, 35, 50, 70, 95, 120, 150, 185, 240 mm²)
+    all_sizes = [1, 1.5, 2.5, 4, 6, 10, 16, 25, 35, 50, 70, 95, 120, 150, 185, 240]
+    table_data_1 = {"Cross-sectional area (mm²)": all_sizes}
+    for method, ratings in base_ratings.items():
+        interp_ratings = np.interp(all_sizes, base_sizes, ratings)
+        table_data_1[method] = [round(r, 1) for r in interp_ratings]
+    
     table_12_1_data = {
         "Nominal cross-section (mm²)": [0.08, 0.14, 0.25, 0.34, 0.5, 0.75, 1.0, 1.5, 2.5, 4],
         "A: Single-core (Current rating in A)": [3, 4.5, 7, 8, 12, 15, 19, 24, 32, 42],
@@ -50,13 +59,13 @@ table_data_1, table_12_1_data, table_12_2_data, table_12_3_data = load_table_dat
 materials = {"Copper": 1.68e-8, "Aluminum": 2.82e-8}
 cable_sizes_mm2 = [1.5, 2.5, 4, 6, 10, 16, 25, 35, 50, 70, 95, 120, 150, 185, 240]
 installation_methods = {
-    "Method 100# (above a plasterboard ceiling)": 0,
-    "Method 101# (above a plasterboard ceiling, exceeding 100mm)": 1,
-    "Method 102# (in a stud wall with thermal insulation)": 2,
-    "Method 103# (in a stud wall with cable touching inner wall)": 3,
-    "Method A* (enclosed in conduit)": 4,
-    "Method B* (enclosed in conduit on a wall)": 5,
-    "Method C* (clipped direct)": 6
+    "Method 100# (A) (above a plasterboard ceiling)": 0,
+    "Method 101# (A) (above a plasterboard ceiling, exceeding 100mm)": 1,
+    "Method 102# (A) (in a stud wall with thermal insulation)": 2,
+    "Method 103# (A) (in a stud wall with cable touching inner wall)": 3,
+    "Method A* (A) (enclosed in conduit)": 4,
+    "Method B* (A) (enclosed in conduit on a wall)": 5,
+    "Method C* (A) (clipped direct)": 6
 }
 
 # Initialize session state for user preferences
@@ -89,16 +98,21 @@ def calculate_required_area(voltage_drop, current, length, material, is_three_ph
 
 @st.cache_data
 def get_current_rating(cross_section, num_cores, installation_method_idx):
-    if cross_section not in table_data_1["Cross-sectional area (mm²)"]:
+    try:
+        if cross_section not in table_data_1["Cross-sectional area (mm²)"]:
+            return float('inf')  # Return infinity for unsupported sizes
+        method_keys = list(installation_methods.keys())
+        method = method_keys[installation_method_idx]
+        idx = table_data_1["Cross-sectional area (mm²)"].index(cross_section)
+        base_rating = table_data_1[method][idx]
+        
+        # Adjust for number of cores (using Table 12-3)
+        core_factors = {2: 1.00, 3: 1.00, 5: 0.75, 7: 0.65, 10: 0.55, 14: 0.50, 24: 0.40}
+        core_factor = core_factors.get(num_cores, 1.00)
+        return base_rating * core_factor
+    except (KeyError, ValueError) as e:
+        st.error(f"Error in get_current_rating: {str(e)}. Check installation method or cross-section.")
         return float('inf')
-    method_keys = list(installation_methods.keys())
-    method_ratings = [table_data_1[key][table_data_1["Cross-sectional area (mm²)"].index(cross_section)] for key in method_keys]
-    base_rating = method_ratings[installation_method_idx]
-    
-    # Adjust for number of cores (using Table 12-3)
-    core_factors = {2: 1.00, 3: 1.00, 5: 0.75, 7: 0.65, 10: 0.55, 14: 0.50, 24: 0.40}
-    core_factor = core_factors.get(num_cores, 1.00)
-    return base_rating * core_factor
 
 # Sidebar menu
 st.sidebar.title("Electrical Calculator")
@@ -221,18 +235,18 @@ elif option == "Cable Chooser":
                     "data": {
                         "labels": list(map(str, lengths)),
                         "datasets": [
-                            {"label": "1.5 mm²", "data": list(drops[0]), "borderColor": "#FF6384", "fill": False},
-                            {"label": "2.5 mm²", "data": list(drops[1]), "borderColor": "#36A2EB", "fill": False},
-                            {"label": "4 mm²", "data": list(drops[2]), "borderColor": "#FFCE56", "fill": False}
+                            {"label": "1.5 mm²", "data": list(drops[0]), "borderColor": "#FF6384", "fill": false},
+                            {"label": "2.5 mm²", "data": list(drops[1]), "borderColor": "#36A2EB", "fill": false},
+                            {"label": "4 mm²", "data": list(drops[2]), "borderColor": "#FFCE56", "fill": false}
                         ]
                     },
                     "options": {
                         "plugins": {
-                            "title": {"display": True, "text": "Voltage Drop vs. Cable Length"}
+                            "title": {"display": true, "text": "Voltage Drop vs. Cable Length"}
                         },
                         "scales": {
-                            "x": {"title": {"display": True, "text": "Cable Length (m)"}},
-                            "y": {"title": {"display": True, "text": "Voltage Drop (V)"}}
+                            "x": {"title": {"display": true, "text": "Cable Length (m)"}},
+                            "y": {"title": {"display": true, "text": "Voltage Drop (V)"}}
                         }
                     }
                 }
@@ -373,10 +387,10 @@ elif option == "Additional Reference Tables":
             },
             "options": {
                 "plugins": {
-                    "title": {"display": True, "text": f"Current Rating Comparison for {selected_size} mm²"}
+                    "title": {"display": true, "text": f"Current Rating Comparison for {selected_size} mm²"}
                 },
                 "scales": {
-                    "y": {"title": {"display": True, "text": "Current Rating (A)"}}
+                    "y": {"title": {"display": true, "text": "Current Rating (A)"}}
                 }
             }
         }
