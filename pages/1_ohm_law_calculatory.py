@@ -1,22 +1,43 @@
 import streamlit as st
 import math
+import uuid
 
 # Streamlit app configuration
-st.set_page_config(page_title="Ohm's Law Calculator", page_icon="⚡️")
+st.set_page_config(page_title="Ohm's Law Calculator (EU)", page_icon="⚡️")
+
+# Initialize session state for input fields
+if 'resistance' not in st.session_state:
+    st.session_state.resistance = 80.0
+if 'current' not in st.session_state:
+    st.session_state.current = 0.0
+if 'voltage' not in st.session_state:
+    st.session_state.voltage = 230.0
+if 'power' not in st.session_state:
+    st.session_state.power = 0.0
 
 # Title and description
-st.title("Ohm's Law Calculator")
-st.write("Calculate DC Power (Watts), Voltage (Volts), Current (Amps), or Resistance (Ohms) by entering any two values.")
+st.title("Ohm's Law Calculator (EU)")
+st.write("Calculate DC Power (Watts), Voltage (Volts), Current (Amps), or Resistance (Ohms) by entering any two values. Select EU voltage standard (L-N: 230V or L-L: 400V).")
 
-# Initialize input fields
-resistance = st.number_input("Resistance (R) in ohms (Ω)", min_value=0.0, value=80.0, step=0.1, format="%.2f")
-current = st.number_input("Current (I) in amps (A)", min_value=0.0, value=0.0, step=0.1, format="%.2f")
-voltage = st.number_input("Voltage (V) in volts (V)", min_value=0.0, value=230.0, step=0.1, format="%.2f")
-power = st.number_input("Power (P) in watts (W)", min_value=0.0, value=0.0, step=0.1, format="%.2f")
+# Voltage standard selection
+voltage_standard = st.selectbox("Select Voltage Standard", ["L-N (230V)", "L-L (400V)"], index=0)
+default_voltage = 230.0 if voltage_standard == "L-N (230V)" else 400.0
+
+# Update voltage in session state if standard changes
+if st.session_state.voltage == 230.0 and voltage_standard == "L-L (400V)":
+    st.session_state.voltage = 400.0
+elif st.session_state.voltage == 400.0 and voltage_standard == "L-N (230V)":
+    st.session_state.voltage = 230.0
+
+# Input fields
+resistance = st.number_input("Resistance (R) in ohms (Ω)", min_value=0.0, value=st.session_state.resistance, step=0.1, format="%.2f", key="resistance")
+current = st.number_input("Current (I) in amps (A)", min_value=0.0, value=st.session_state.current, step=0.1, format="%.2f", key="current")
+voltage = st.number_input("Voltage (V) in volts (V)", min_value=0.0, value=st.session_state.voltage, step=0.1, format="%.2f", key="voltage")
+power = st.number_input("Power (P) in watts (W)", min_value=0.0, value=st.session_state.power, step=0.1, format="%.2f", key="power")
 
 # Calculate button
 if st.button("Calculate"):
-    # Count how many inputs are provided (non-zero)
+    # Count non-zero inputs
     inputs = [resistance, current, voltage, power]
     non_zero_inputs = sum(1 for x in inputs if x > 0)
 
@@ -24,7 +45,7 @@ if st.button("Calculate"):
         st.error("Please enter exactly two non-zero values to calculate the others.")
     else:
         try:
-            # Initialize result dictionary with input values
+            # Initialize result dictionary
             results = {"Resistance (Ω)": resistance, "Current (A)": current, "Voltage (V)": voltage, "Power (W)": power}
 
             # Calculations based on provided inputs
@@ -67,6 +88,12 @@ if st.button("Calculate"):
             else:
                 st.error("Invalid combination of inputs. Please provide exactly two non-zero values.")
                 st.stop()
+
+            # Update session state with calculated values
+            st.session_state.resistance = results["Resistance (Ω)"]
+            st.session_state.current = results["Current (A)"]
+            st.session_state.voltage = results["Voltage (V)"]
+            st.session_state.power = results["Power (W)"]
 
             # Display results
             st.success("Calculated Values:")
