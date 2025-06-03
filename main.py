@@ -1,10 +1,6 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import json
-from reportlab.lib.pagesizes import letter
-from reportlab.pdfgen import canvas
-import io
 
 # Streamlit app configuration
 st.set_page_config(page_title="Electrical Engineering Calculator", layout="wide")
@@ -104,19 +100,6 @@ def get_current_rating(cross_section, num_cores, installation_method_idx):
     core_factor = core_factors.get(num_cores, 1.00)
     return base_rating * core_factor
 
-def export_to_pdf(results):
-    buffer = io.BytesIO()
-    c = canvas.Canvas(buffer, pagesize=letter)
-    c.setFont("Helvetica", 12)
-    y = 750
-    for line in results.split("\n"):
-        c.drawString(50, y, line)
-        y -= 15
-    c.showPage()
-    c.save()
-    buffer.seek(0)
-    return buffer
-
 # Sidebar menu
 st.sidebar.title("Electrical Calculator")
 option = st.sidebar.selectbox("Choose Calculation", [
@@ -146,11 +129,6 @@ if option == "Cable Resistance":
     if st.button("Calculate Resistance"):
         resistance = calculate_resistance(length, cross_section, material)
         st.success(f"Cable Resistance: {resistance:.6f} ohms")
-        
-        # Export option
-        results = f"Cable Resistance Calculation\nLength: {length} m\nCross-Section: {cross_section} mm²\nMaterial: {material}\nResistance: {resistance:.6f} ohms"
-        pdf_buffer = export_to_pdf(results)
-        st.download_button("Export to PDF", pdf_buffer, file_name="cable_resistance.pdf", mime="application/pdf")
 
 # Cable Chooser
 elif option == "Cable Chooser":
@@ -261,13 +239,6 @@ elif option == "Cable Chooser":
                 st.write("**Voltage Drop Comparison Across Lengths**")
                 st.markdown(f"<div style='color: black;'>Line chart showing voltage drop increasing with cable length for different cable sizes.</div>", unsafe_allow_html=True)
                 st.chart(chart_data)
-                
-                # Export option
-                results = (f"Cable Chooser Results\nCurrent: {current} A\nLength: {length} m\nMax Voltage Drop: {max_voltage_drop} V\n"
-                          f"Material: {material}\nAmbient Temp: {ambient_temp}°C\nCores: {num_cores}\nInstallation: {installation_method}\n"
-                          f"Recommended Size: {recommended_size} mm²\nResistance: {resistance:.6f} ohms\nVoltage Drop: {actual_voltage_drop:.2f} V")
-                pdf_buffer = export_to_pdf(results)
-                st.download_button("Export to PDF", pdf_buffer, file_name="cable_chooser.pdf", mime="application/pdf")
             else:
                 st.error("No suitable cable size found. Increase allowable voltage drop or reduce current/length.")
 
