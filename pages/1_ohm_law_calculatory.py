@@ -12,8 +12,7 @@ def initialize_session_state():
         "voltage": 230.0,
         "power": 0.0,
         "voltage_standard": "L-N (230V)",
-        "reset_key": 0,
-        "calculated_results": None  # Store calculated results temporarily
+        "reset_key": 0
     }
     for key, value in defaults.items():
         if key not in st.session_state:
@@ -81,7 +80,6 @@ if st.button("Reset"):
     st.session_state.voltage = 230.0
     st.session_state.power = 0.0
     st.session_state.voltage_standard = "L-N (230V)"
-    st.session_state.calculated_results = None
     st.session_state.reset_key += 1
     st.rerun()
 
@@ -98,7 +96,6 @@ if st.button("Calculate"):
 
     if len(non_zero_inputs) != 2:
         st.error("Please enter exactly two non-zero values to calculate the others.")
-        st.session_state.calculated_results = None
     else:
         try:
             # Initialize result dictionary
@@ -137,11 +134,13 @@ if st.button("Calculate"):
 
             else:
                 st.error("Invalid combination of inputs. Please provide exactly two non-zero values.")
-                st.session_state.calculated_results = None
                 st.stop()
 
-            # Store results in session state
-            st.session_state.calculated_results = results
+            # Update session state to reflect calculated values in input fields
+            st.session_state.resistance = results["Resistance (Ω)"]
+            st.session_state.current = results["Current (A)"]
+            st.session_state.voltage = results["Voltage (V)"]
+            st.session_state.power = results["Power (W)"]
 
             # Display results
             st.success("Calculated Values:")
@@ -150,22 +149,8 @@ if st.button("Calculate"):
 
         except ZeroDivisionError:
             st.error("Error: Division by zero. Please check your input values.")
-            st.session_state.calculated_results = None
         except ValueError:
             st.error("Error: Invalid calculation (e.g., negative value under square root). Please check your inputs.")
-            st.session_state.calculated_results = None
-
-# Update button
-if st.button("Update"):
-    if st.session_state.calculated_results is None:
-        st.error("No calculations available. Please click 'Calculate' first.")
-    else:
-        # Update input fields with calculated values
-        st.session_state.resistance = st.session_state.calculated_results["Resistance (Ω)"]
-        st.session_state.current = st.session_state.calculated_results["Current (A)"]
-        st.session_state.voltage = st.session_state.calculated_results["Voltage (V)"]
-        st.session_state.power = st.session_state.calculated_results["Power (W)"]
-        st.rerun()
 
 # Add formulas for reference
 st.subheader("Ohm's Law and Power Formulas")
