@@ -222,7 +222,7 @@ elif option == "Cable Chooser":
                 st.success(f"Recommended Cable Size: {recommended_size} mm²")
                 st.write(f"Calculated Resistance: {resistance:.6f} ohms")
                 
-                # Voltage drop chart
+                # Voltage drop chart using st.line_chart
                 lengths = np.arange(10, 101, 10)
                 drops = []
                 for size in [1.5, 2.5, 4]:
@@ -230,29 +230,17 @@ elif option == "Cable Chooser":
                     v_drop = calculate_voltage_drop(current, r, is_three_phase, power_factor)
                     drops.append(v_drop)
                 
-                chart_data = {
-                    "type": "line",
-                    "data": {
-                        "labels": list(map(str, lengths)),
-                        "datasets": [
-                            {"label": "1.5 mm²", "data": list(drops[0]), "borderColor": "#FF6384", "fill": False},
-                            {"label": "2.5 mm²", "data": list(drops[1]), "borderColor": "#36A2EB", "fill": False},
-                            {"label": "4 mm²", "data": list(drops[2]), "borderColor": "#FFCE56", "fill": False}
-                        ]
-                    },
-                    "options": {
-                        "plugins": {
-                            "title": {"display": True, "text": "Voltage Drop vs. Cable Length"}
-                        },
-                        "scales": {
-                            "x": {"title": {"display": True, "text": "Cable Length (m)"}},
-                            "y": {"title": {"display": True, "text": "Voltage Drop (V)"}}
-                        }
-                    }
-                }
+                # Create a DataFrame for st.line_chart
+                chart_df = pd.DataFrame({
+                    "Cable Length (m)": lengths,
+                    "1.5 mm²": drops[0],
+                    "2.5 mm²": drops[1],
+                    "4 mm²": drops[2]
+                }).set_index("Cable Length (m)")
+                
                 st.write("**Voltage Drop Comparison Across Lengths**")
-                st.markdown(f"<div style='color: black;'>Line chart showing voltage drop increasing with cable length for different cable sizes.</div>", unsafe_allow_html=True)
-                st.chart(chart_data)
+                st.markdown("<div style='color: black;'>Line chart showing voltage drop increasing with cable length for different cable sizes.</div>", unsafe_allow_html=True)
+                st.line_chart(chart_df)
             else:
                 st.error("No suitable cable size found. Increase allowable voltage drop or reduce current/length.")
 
@@ -370,33 +358,21 @@ elif option == "Additional Reference Tables":
       - D: Multi-core rubber-sheathed cables (min. 0.6/1 kV) and special single-core cables (0.6/1 or 1.8/3 kV)
     """)
 
-    # Current rating comparison chart
+    # Current rating comparison chart using st.bar_chart
     selected_size = st.selectbox("Select Cross-Section for Comparison (mm²)", [1.0, 1.5, 2.5, 4])
     if selected_size in table_data_1["Cross-sectional area (mm²)"]:
         idx = table_data_1["Cross-sectional area (mm²)"].index(selected_size)
         ratings = {method: table_data_1[method][idx] for method in installation_methods.keys()}
-        chart_data = {
-            "type": "bar",
-            "data": {
-                "labels": list(installation_methods.keys()),
-                "datasets": [{
-                    "label": f"Current Rating for {selected_size} mm²",
-                    "data": list(ratings.values()),
-                    "backgroundColor": "#36A2EB"
-                }]
-            },
-            "options": {
-                "plugins": {
-                    "title": {"display": True, "text": f"Current Rating Comparison for {selected_size} mm²"}
-                },
-                "scales": {
-                    "y": {"title": {"display": True, "text": "Current Rating (A)"}}
-                }
-            }
-        }
+        
+        # Create a DataFrame for st.bar_chart
+        chart_df = pd.DataFrame({
+            "Installation Method": list(ratings.keys()),
+            f"Current Rating for {selected_size} mm²": list(ratings.values())
+        }).set_index("Installation Method")
+        
         st.write(f"**Current Rating Comparison for {selected_size} mm² Across Installation Methods**")
         st.markdown(f"<div style='color: black;'>Bar chart comparing current ratings for {selected_size} mm² cable across different installation methods.</div>", unsafe_allow_html=True)
-        st.chart(chart_data)
+        st.bar_chart(chart_df)
 
     st.subheader("Table 12-2: Conversion Factors for Ambient Temperature")
     st.write("Conversion factors to be applied to the current rating values in Table 12-1 for ambient temperatures other than +30°C.")
