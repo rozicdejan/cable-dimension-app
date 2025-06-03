@@ -235,18 +235,18 @@ elif option == "Cable Chooser":
                     "data": {
                         "labels": list(map(str, lengths)),
                         "datasets": [
-                            {"label": "1.5 mm²", "data": list(drops[0]), "borderColor": "#FF6384", "fill": false},
-                            {"label": "2.5 mm²", "data": list(drops[1]), "borderColor": "#36A2EB", "fill": false},
-                            {"label": "4 mm²", "data": list(drops[2]), "borderColor": "#FFCE56", "fill": false}
+                            {"label": "1.5 mm²", "data": list(drops[0]), "borderColor": "#FF6384", "fill": False},
+                            {"label": "2.5 mm²", "data": list(drops[1]), "borderColor": "#36A2EB", "fill": False},
+                            {"label": "4 mm²", "data": list(drops[2]), "borderColor": "#FFCE56", "fill": False}
                         ]
                     },
                     "options": {
                         "plugins": {
-                            "title": {"display": true, "text": "Voltage Drop vs. Cable Length"}
+                            "title": {"display": True, "text": "Voltage Drop vs. Cable Length"}
                         },
                         "scales": {
-                            "x": {"title": {"display": true, "text": "Cable Length (m)"}},
-                            "y": {"title": {"display": true, "text": "Voltage Drop (V)"}}
+                            "x": {"title": {"display": True, "text": "Cable Length (m)"}},
+                            "y": {"title": {"display": True, "text": "Voltage Drop (V)"}}
                         }
                     }
                 }
@@ -387,10 +387,10 @@ elif option == "Additional Reference Tables":
             },
             "options": {
                 "plugins": {
-                    "title": {"display": true, "text": f"Current Rating Comparison for {selected_size} mm²"}
+                    "title": {"display": True, "text": f"Current Rating Comparison for {selected_size} mm²"}
                 },
                 "scales": {
-                    "y": {"title": {"display": true, "text": "Current Rating (A)"}}
+                    "y": {"title": {"display": True, "text": "Current Rating (A)"}}
                 }
             }
         }
